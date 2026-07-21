@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { SiteShell } from "@/components/site/SiteShell";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { Camera, Loader2, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient, getSupabaseUrl } from "@/lib/supabase/client";
 
@@ -69,6 +69,30 @@ export default function SettingsPage() {
   const [borderThickness, setBorderThickness] = useState(2);
   const [borderRadius, setBorderRadius] = useState(0);
   const { fontSize, increment, decrement, reset } = useFontSize();
+
+  // Skills tags state
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const skillInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAddSkill = () => {
+    const trimmed = skillInput.trim();
+    if (trimmed && !skills.includes(trimmed)) {
+      setSkills((prev) => [...prev, trimmed]);
+    }
+    setSkillInput("");
+  };
+
+  const handleSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddSkill();
+    }
+  };
+
+  const handleRemoveSkill = (skill: string) => {
+    setSkills((prev) => prev.filter((s) => s !== skill));
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -138,6 +162,10 @@ export default function SettingsPage() {
         linkedinUrl: profile?.linkedin_url || "",
         phoneNumber: profile?.phone_number || "",
       });
+      // Populate skills from profile
+      if (Array.isArray(profile?.skills)) {
+        setSkills(profile.skills as string[]);
+      }
     }
   }, [profile, user, form]);
 
@@ -159,6 +187,7 @@ export default function SettingsPage() {
           bio: values.bio || null,
           linkedin_url: values.linkedinUrl || null,
           phone_number: values.phoneNumber || null,
+          skills: skills,
         })
         .eq("id", user.id);
 
@@ -344,6 +373,52 @@ export default function SettingsPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Skills Tags Editor */}
+                <div className="space-y-2">
+                  <label className="eyebrow font-bold text-black">Skills</label>
+                  <p className="font-mono text-xs text-gray-500">
+                    Add your skills to help with matchmaking (press Enter or click + to add).
+                  </p>
+                  {/* Tag chips */}
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="neu-border inline-flex items-center gap-1 bg-lime px-2 py-1 font-mono text-xs font-bold"
+                      >
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSkill(skill)}
+                          aria-label={`Remove skill ${skill}`}
+                          className="ml-1 transition-opacity hover:opacity-60"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  {/* Add skill input */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={skillInputRef}
+                      value={skillInput}
+                      onChange={(e) => setSkillInput(e.target.value)}
+                      onKeyDown={handleSkillKeyDown}
+                      placeholder="e.g. React, Python, Design..."
+                      className="flex-1 border-0 border-b-2 border-black bg-transparent px-1 py-2 font-mono text-sm outline-none focus:bg-lime/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSkill}
+                      aria-label="Add skill"
+                      className="neu-border bg-black p-2 text-cream transition-all hover:scale-105 active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
 
                 <div className="flex justify-end pt-4">
                   <button
